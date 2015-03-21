@@ -2,16 +2,19 @@
 title       : Slidify Presentation
 subtitle    : Cousera project
 author      : Chris Myers
-job         : R hacker in training
+job         : R hacker in training :-)
 framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
 highlighter : highlight.js  # {highlight.js, prettify, highlight}
 hitheme     : tomorrow      # 
-widgets    : [bootstrap, quiz, shiny, interactive]
-ext_widgets: {rCharts: [libraries/nvd3]}
+widgets     : []            # {mathjax, quiz, bootstrap}
 mode        : selfcontained # {standalone, draft}
-github:
-  user:  Ccmyers
-  repo:  slidifydeck
+output: 
+
+  ioslides_presentation:
+
+    self_contained: true
+
+runtime: shiny
 ---
 
 ## Introducing my first Shiny App
@@ -29,8 +32,7 @@ Then added:
 3. colored plot lines for mean and median on the histogram 
 4. Adding text for mean and median values on the histogram
 
-
---- .class #id 
+---.class #id
 
 ## Shiny any deployed on Shinyapps.io
 
@@ -38,98 +40,121 @@ Hosting shiny app here
 
 https://ccmyers.shinyapps.io/myap/
 
-Next slide is the partially working Shiny app in Slidifiy
+Next slide is showing Shiny in Slidify and the key part for me was:
 
-Could not get Shiny slider input, main panel, or plots to work (yet) in Slidify 
+  shiny (
+  ui = fluidPage(ui.R code here),
+  server = function(input, output) { server.R code here }
+  )
 
-Changed sliderinput to textinput as a temp fix
+---.class #id
 
-Only reactive part working is the text caption
+## Shiny app embedded in Slidiify
 
-(also tried to get my shiny ap working in R presentation but no success there either)
+```{r, echo=FALSE}
 
---- .class #id 
+shinyApp(
 
-## Partially working Shiny app
+  ui = fluidPage(
 
-
-```{r opts.label = 'shiny',cache=FALSE}
-
-library(rmarkdown);library(shiny);sessionInfo();
-shinyUI(fluidPage(
-  
-  # Application title
-  #titlePanel("Tabsets updated by Chris Myers"),
-  
-  # Sidebar with controls to select the random distribution type
-  # and number of observations to generate. Note the use of the
-  # br() element to introduce extra vertical spacing
-  sidebarLayout(position = c("left"),fluid=FALSE,
-    sidebarPanel(
-      
-      # caption that can be updated
+    sidebarLayout(position = c("left"),fluid=TRUE,
+      sidebarPanel(
+         # caption that can be updated
       textInput("caption", "Caption:", "Data Distributions"),
-      
-      # selecting which distribution
-      radioButtons("dist", "Distribution type:",
+            radioButtons("dist", "Distribution type:",
                    c("Normal" = "norm",
                      "Uniform" = "unif",
                      "Log-normal" = "lnorm",
                      "Exponential" = "exp")),
-      #br(),
+            br(),
       
       #slider input
-      selectInput("n", "Choose values", c('500', '1000'))
-      
-    
-#       sliderInput("n", 
-#                   "Number of observations:", 
-#                   value = 500,
-#                   min = 1, 
-#                   max = 1000)
-#     ),
-    ),
-    # Show a tabset that includes a plot, summary, and table view
-    # of the generated distribution
-    
-#     mainPanel(
-#     tags$div(id = 'nvd3plot', class='shiny-html-output nvd3 rChart')
+      sliderInput("n", 
+                  "Number of observations:", 
+                  value = 500,
+                  min = 1, 
+                  max = 1000)
+
+ 
+       ),
     mainPanel(
-      tags$div(
-        id = 'nvd3caption', class='shiny-html-output nvd3 rChart',
-      h3(textOutput("caption", container = span))
-        
-      
-      # tags$div(id = 'nvd3plot', class='shiny-html-output nvd3 rChart',plotOutput("nvd3plot"))
-         )
-      
-#       tabsetPanel(type = "tabs", 
-#                   tabPanel("Plot", plotOutput("nvd3plot")), 
-#                   tabPanel("Summary", verbatimTextOutput("summary")), 
-#                   tabPanel("Table", tableOutput("table"))
-                  
-                  
+      h3(textOutput("caption", container = span)),
+ #      plotOutput("phonePlot")
+      tabsetPanel(type = "tabs", 
+                  tabPanel("Plot", plotOutput("plot")),
+                   tabPanel("Summary", verbatimTextOutput("summary")), 
+                  tabPanel("Table", tableOutput("table"))
+            )
+
       )
+    )
+
+  ),
+
+  
+
+  server = function(input, output) {
     
-  )
-))
+    data <- reactive({
+    dist <- switch(input$dist,
+                   norm = rnorm,
+                   unif = runif,
+                   lnorm = rlnorm,
+                   exp = rexp,
+                   rnorm)
+    
+    dist(input$n)
+  })
+  
+    output$caption <- renderText({
+    input$caption
+  })
+  
+    output$plot <- renderPlot({
+    dist <- input$dist
+    n <- input$n
+    mu <- mean(data())
+    med <- median(data())
+    #get max height of histogram for plotting mean and median lines
+    ht <- max(hist(data())$counts ) 
+    # plot histogram with noting mean and median
+    hist(data(), 
+         main=paste('r', dist, '(', n, ')', sep=''),
+         sub = paste('mean =',round(mu,2)),col.sub ='red',
+         xlab = paste('median =',round(med,2)), col.lab='blue')
+    # draw mean and median lines
+    lines(c(mu, mu), c(0, ht),col="red",lwd=5)
+    lines(c(med, med), c(0, ht),col="blue",lwd=5)
+    
+  })
+  
+    output$summary <- renderPrint({
+    summary(data())
+  })
+  
+    # Generate an HTML table view of the data
+  output$table <- renderTable({
+    data.frame(x=data())
+  })
+
+   
+
+  },
+
+)
 
 ```
 
-
-
---- .class #id 
+---.class #id
 
 ## Summary
 
 Shiny apps are pretty cool, and easy to update given the examples and tutorials!
 
-Slidify looks promising, but needs more time before I can learn how to get all shiny widgets working.
+Incoporting the shiny app into Slidify took a lot of hacking, but finally worked!
 
-Noticed that sometimes only Google Chrome displayed presentation correctly instead of Internet Explorer
+Will need to later see if it can also be down in R presentation (not working yet)
 
-Or I may have to learn html :-)
 
-Or next time do a more simple shiny ap for my presentation example ??
 
 
